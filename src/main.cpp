@@ -65,6 +65,23 @@ struct Player {
   float vy;
 };
 
+#if defined(DEVIL_JUMP_STICKS3)
+struct BgmNote {
+  uint16_t frequency;
+  uint16_t duration;
+  uint16_t gap;
+};
+
+constexpr BgmNote kRetroPlatformBgm[] = {
+    {988, 72, 20},  {1175, 72, 20}, {1319, 92, 36}, {0, 36, 12},
+    {988, 72, 20},  {1568, 92, 36}, {1319, 72, 24}, {1175, 92, 72},
+    {880, 72, 20},  {1047, 72, 20}, {1175, 92, 36}, {0, 36, 12},
+    {880, 72, 20},  {1319, 92, 36}, {1175, 72, 24}, {1047, 118, 88},
+};
+
+constexpr int kRetroPlatformBgmLength = sizeof(kRetroPlatformBgm) / sizeof(kRetroPlatformBgm[0]);
+#endif
+
 enum class DifficultyMode {
   Easy,
   Standard,
@@ -90,6 +107,11 @@ uint32_t victoryStart = 0;
 uint32_t lastTelemetry = 0;
 uint32_t telemetrySeq = 0;
 uint32_t lastBounceSoundAt = 0;
+#if defined(DEVIL_JUMP_STICKS3)
+uint32_t nextBgmAt = 0;
+int bgmNoteIndex = 0;
+bool bgmEnabled = false;
+#endif
 int displayedLevel = 1;
 int cachedBackgroundIndex = -1;
 DifficultyMode difficultyMode = DifficultyMode::Hard;
@@ -108,8 +130,8 @@ void initAudio() {
     return;
   }
 #if defined(DEVIL_JUMP_STICKS3)
-  M5.Speaker.setVolume(96);
-  M5.Speaker.setChannelVolume(0, 220);
+  M5.Speaker.setVolume(88);
+  M5.Speaker.setChannelVolume(0, 120);
   M5.Speaker.setChannelVolume(1, 200);
 #else
   M5.Speaker.setVolume(46);
@@ -117,6 +139,47 @@ void initAudio() {
   M5.Speaker.setChannelVolume(1, 110);
 #endif
 }
+
+#if defined(DEVIL_JUMP_STICKS3)
+void startBgm() {
+  if (!audioEnabled) {
+    return;
+  }
+  bgmEnabled = true;
+}
+
+void stopBgm() {
+  bgmEnabled = false;
+  if (audioEnabled) {
+    M5.Speaker.stop(0);
+  }
+}
+
+void updateBgm() {
+  if (!audioEnabled || !bgmEnabled) {
+    return;
+  }
+
+  uint32_t now = millis();
+  if (now < nextBgmAt) {
+    return;
+  }
+
+  const BgmNote& note = kRetroPlatformBgm[bgmNoteIndex];
+  if (note.frequency > 0) {
+    M5.Speaker.tone(note.frequency, note.duration, 0, true);
+  } else {
+    M5.Speaker.stop(0);
+  }
+  nextBgmAt = now + note.duration + note.gap;
+  bgmNoteIndex = (bgmNoteIndex + 1) % kRetroPlatformBgmLength;
+}
+
+void resetBgm() {
+  bgmNoteIndex = 0;
+  nextBgmAt = 0;
+}
+#endif
 
 void playBounceSound() {
   if (!audioEnabled) {
@@ -128,7 +191,7 @@ void playBounceSound() {
   }
   lastBounceSoundAt = now;
 #if defined(DEVIL_JUMP_STICKS3)
-  M5.Speaker.tone(1568, 70, 0, true);
+  M5.Speaker.tone(1976, 58, 1, true);
 #else
   M5.Speaker.tone(1175, 45, 0, true);
 #endif
@@ -147,6 +210,7 @@ void playStartSound() {
 void playFailureSound() {
   if (audioEnabled) {
 #if defined(DEVIL_JUMP_STICKS3)
+    stopBgm();
     M5.Speaker.tone(330, 260, 0, true);
 #else
     M5.Speaker.tone(392, 210, 0, true);
@@ -157,6 +221,7 @@ void playFailureSound() {
 void playSuccessSound() {
   if (audioEnabled) {
 #if defined(DEVIL_JUMP_STICKS3)
+    stopBgm();
     M5.Speaker.tone(1568, 220, 0, true);
     M5.Speaker.tone(2093, 260, 1, true);
 #else
@@ -644,6 +709,9 @@ void updateGame() {
   if (score >= winScoreForDifficulty() && !winTransition && !victory) {
     winTransition = true;
     winTransitionStart = millis();
+#if defined(DEVIL_JUMP_STICKS3)
+    stopBgm();
+#endif
   }
 }
 
@@ -680,6 +748,9 @@ void renderWinTransition() {
 }
 
 void showBootScreen() {
+#if defined(DEVIL_JUMP_STICKS3)
+  stopBgm();
+#endif
   M5.Display.fillScreen(TFT_BLACK);
   int imageX = (screenW - kSplashWidth) / 2;
   int imageY = (screenH - kSplashHeight) / 2;
@@ -711,6 +782,10 @@ void showBootScreen() {
     }
     if (M5.BtnB.wasPressed()) {
       playStartSound();
+#if defined(DEVIL_JUMP_STICKS3)
+      resetBgm();
+      startBgm();
+#endif
       break;
     }
     delay(10);
@@ -785,6 +860,9 @@ void loop() {
   }
   lastFrame = now;
 
+#if defined(DEVIL_JUMP_STICKS3)
+  updateBgm();
+#endif
   updateGame();
   renderGame();
   emitTelemetry("play");
