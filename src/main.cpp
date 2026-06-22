@@ -572,21 +572,26 @@ void showBootScreen() {
   M5.Display.pushImage(imageX, imageY, kSplashWidth, kSplashHeight, kSplashImage);
   M5.Display.setSwapBytes(false);
 
+  bool modeNeedsRedraw = true;
   while (true) {
     M5.update();
     emitTelemetry("home");
-    char modeText[20];
-    difficultyLabel(modeText, sizeof(modeText));
-    M5.Display.fillRect(0, screenH - 34, screenW, 34, TFT_BLACK);
-    M5.Display.setTextSize(1);
-    M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
-    M5.Display.setCursor(6, screenH - 31);
-    M5.Display.print(modeText);
-    M5.Display.setCursor(6, screenH - 18);
-    M5.Display.print("A MODE  B START");
+    if (modeNeedsRedraw) {
+      char modeText[20];
+      difficultyLabel(modeText, sizeof(modeText));
+      M5.Display.fillRect(0, screenH - 34, screenW, 34, TFT_BLACK);
+      M5.Display.setTextSize(1);
+      M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+      M5.Display.setCursor(6, screenH - 31);
+      M5.Display.print(modeText);
+      M5.Display.setCursor(6, screenH - 18);
+      M5.Display.print("A MODE  B START");
+      modeNeedsRedraw = false;
+    }
 
     if (M5.BtnA.wasPressed()) {
       cycleDifficulty();
+      modeNeedsRedraw = true;
       emitTelemetry("home", true);
     }
     if (M5.BtnB.wasPressed()) {
