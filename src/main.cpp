@@ -81,9 +81,11 @@ int bestScore = 0;
 int worldLift = 0;
 bool gameOver = false;
 bool gameOverDrawn = false;
+bool winTransition = false;
 bool victory = false;
 bool victoryDrawn = false;
 uint32_t lastFrame = 0;
+uint32_t winTransitionStart = 0;
 uint32_t victoryStart = 0;
 uint32_t lastTelemetry = 0;
 uint32_t telemetrySeq = 0;
@@ -258,8 +260,10 @@ void resetGame() {
   worldLift = 0;
   gameOver = false;
   gameOverDrawn = false;
+  winTransition = false;
   victory = false;
   victoryDrawn = false;
+  winTransitionStart = 0;
   victoryStart = 0;
   displayedLevel = 1;
 
@@ -373,6 +377,22 @@ void drawPlayer() {
   canvas.pushImage(px, py, kPlayerSpriteWidth, kPlayerSpriteHeight,
                    kPlayerSprite, kPlayerSpriteTransparent);
   canvas.setSwapBytes(false);
+}
+
+void drawAngelPlayer() {
+  int px = static_cast<int>(player.x);
+  int py = static_cast<int>(player.y);
+  int centerX = px + playerW / 2;
+
+  canvas.fillTriangle(px - 8, py + 15, px + 4, py + 7, px + 6, py + 27, TFT_WHITE);
+  canvas.fillTriangle(px + playerW + 8, py + 15, px + playerW - 4, py + 7,
+                      px + playerW - 6, py + 27, TFT_WHITE);
+  canvas.drawTriangle(px - 8, py + 15, px + 4, py + 7, px + 6, py + 27, 0xFFE0);
+  canvas.drawTriangle(px + playerW + 8, py + 15, px + playerW - 4, py + 7,
+                      px + playerW - 6, py + 27, 0xFFE0);
+  canvas.drawEllipse(centerX, py - 3, 10, 3, 0xFFE0);
+  canvas.drawEllipse(centerX, py - 3, 9, 2, TFT_WHITE);
+  drawPlayer();
 }
 
 void drawPlatforms() {
@@ -548,10 +568,9 @@ void updateGame() {
     gameOverDrawn = false;
   }
 
-  if (score >= winScoreForDifficulty()) {
-    victory = true;
-    victoryDrawn = false;
-    victoryStart = millis();
+  if (score >= winScoreForDifficulty() && !winTransition && !victory) {
+    winTransition = true;
+    winTransitionStart = millis();
   }
 }
 
@@ -562,6 +581,28 @@ void renderGame() {
   drawPlayer();
   drawHud();
   canvas.pushSprite(0, 0);
+}
+
+void renderWinTransition() {
+  uint32_t elapsed = millis() - winTransitionStart;
+  float progress = min(1.0f, elapsed / 820.0f);
+  float startY = screenH * 0.42f;
+  player.y = startY + (-playerH - startY) * progress;
+  player.x += sin(elapsed / 75.0f) * 0.18f;
+
+  displayedLevel = levelIndexForScore(score) + 1;
+  drawBackground();
+  drawPlatforms();
+  drawAngelPlayer();
+  drawHud();
+  canvas.pushSprite(0, 0);
+
+  if (progress >= 1.0f) {
+    winTransition = false;
+    victory = true;
+    victoryDrawn = false;
+    victoryStart = millis();
+  }
 }
 
 void showBootScreen() {
@@ -624,6 +665,13 @@ void setup() {
 
 void loop() {
   M5.update();
+
+  if (winTransition) {
+    renderWinTransition();
+    emitTelemetry("ascend");
+    delay(16);
+    return;
+  }
 
   if (victory) {
     drawVictoryFrame();

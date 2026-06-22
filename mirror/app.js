@@ -14,6 +14,7 @@ const images = {};
 const stateNames = {
   home: "首页",
   play: "游戏中",
+  ascend: "飞升",
   gameover: "Game Over",
   victory: "Success",
   waiting: "等待串口",
@@ -159,6 +160,33 @@ function drawPlayer(data) {
   ctx.fillRect(x, y, 14, 16);
 }
 
+function drawAngelPlayer(data) {
+  const [x, y] = data.player || [0, 0];
+  const cx = x + 15;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#ffe45c";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y + 15);
+  ctx.lineTo(x + 4, y + 7);
+  ctx.lineTo(x + 6, y + 27);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 38, y + 15);
+  ctx.lineTo(x + 26, y + 7);
+  ctx.lineTo(x + 24, y + 27);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(cx, y - 3, 10, 3, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = "#ffe45c";
+  ctx.stroke();
+  drawPlayer(data);
+}
+
 function drawConfetti() {
   const colors = ["#ff4141", "#ffe24d", "#4dff88", "#39d6ff", "#ff66d8", "#ffffff"];
   for (let i = 0; i < 34; i += 1) {
@@ -193,6 +221,12 @@ function render(data) {
     drawCover(images.victory);
     drawConfetti();
     drawBottomText("SUCCESS");
+  } else if (data.state === "ascend") {
+    drawCover(images[`level${data.level || 1}`]);
+    drawPlatforms(data);
+    drawAngelPlayer(data);
+    drawHud(data);
+    drawBottomText("ASCENDING");
   } else if (data.state === "waiting" || data.state === "connected" || data.state === "error") {
     drawCover(images.home);
     drawBottomText(data.message || "等待 M5Stick");
