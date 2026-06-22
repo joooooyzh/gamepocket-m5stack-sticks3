@@ -562,7 +562,7 @@ void readInput() {
 
   if (M5.Imu.isEnabled() && M5.Imu.getAccel(&ax, &ay, &az)) {
 #if defined(DEVIL_JUMP_STICKS3)
-    player.vx += ay * kMoveAccel * 3.2f;
+    player.vx -= ay * kMoveAccel * 3.2f;
 #else
     player.vx -= ax * kMoveAccel * 3.2f;
 #endif
