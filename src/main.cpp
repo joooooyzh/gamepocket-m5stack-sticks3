@@ -65,48 +65,10 @@ struct Player {
   float vy;
 };
 
-struct MelodyNote {
-  uint16_t frequency;
-  uint16_t duration;
-  uint16_t gap;
-};
-
 enum class DifficultyMode {
   Easy,
   Standard,
   Hard,
-};
-
-enum class MusicScene {
-  Boot,
-  Play,
-  Ascend,
-  Victory,
-  GameOver,
-};
-
-constexpr MelodyNote kBootMelody[] = {
-    {659, 70, 28}, {784, 70, 28}, {988, 90, 70}, {784, 70, 28},
-    {880, 70, 28}, {1047, 120, 150},
-};
-
-constexpr MelodyNote kPlayMelody[] = {
-    {523, 58, 38}, {0, 36, 18}, {659, 58, 38}, {784, 72, 52},
-    {659, 58, 38}, {880, 58, 38}, {784, 96, 120},
-};
-
-constexpr MelodyNote kAscendMelody[] = {
-    {784, 70, 20}, {988, 70, 20}, {1175, 70, 20}, {1319, 90, 20},
-    {1568, 130, 80},
-};
-
-constexpr MelodyNote kVictoryMelody[] = {
-    {1047, 85, 25}, {1319, 85, 25}, {1568, 120, 40},
-    {1319, 85, 25}, {1760, 160, 180},
-};
-
-constexpr MelodyNote kGameOverMelody[] = {
-    {659, 110, 30}, {523, 120, 40}, {392, 170, 220},
 };
 
 int screenW = 0;
@@ -127,47 +89,17 @@ uint32_t winTransitionStart = 0;
 uint32_t victoryStart = 0;
 uint32_t lastTelemetry = 0;
 uint32_t telemetrySeq = 0;
-uint32_t nextMusicAt = 0;
 uint32_t lastBounceSoundAt = 0;
 int displayedLevel = 1;
 int cachedBackgroundIndex = -1;
 DifficultyMode difficultyMode = DifficultyMode::Hard;
 int hardStars = 5;
 bool audioEnabled = false;
-MusicScene currentMusicScene = MusicScene::Boot;
-int musicNoteIndex = 0;
 
 Player player;
 Platform platforms[kPlatformCount];
 M5Canvas canvas(&M5.Display);
 M5Canvas backgroundCanvas(&M5.Display);
-
-template <size_t N>
-constexpr int melodyLength(const MelodyNote (&)[N]) {
-  return N;
-}
-
-const MelodyNote* melodyForScene(MusicScene scene, int& length) {
-  switch (scene) {
-    case MusicScene::Boot:
-      length = melodyLength(kBootMelody);
-      return kBootMelody;
-    case MusicScene::Play:
-      length = melodyLength(kPlayMelody);
-      return kPlayMelody;
-    case MusicScene::Ascend:
-      length = melodyLength(kAscendMelody);
-      return kAscendMelody;
-    case MusicScene::Victory:
-      length = melodyLength(kVictoryMelody);
-      return kVictoryMelody;
-    case MusicScene::GameOver:
-      length = melodyLength(kGameOverMelody);
-      return kGameOverMelody;
-  }
-  length = 0;
-  return nullptr;
-}
 
 void initAudio() {
   M5.Speaker.begin();
@@ -175,44 +107,9 @@ void initAudio() {
   if (!audioEnabled) {
     return;
   }
-  M5.Speaker.setVolume(54);
-  M5.Speaker.setChannelVolume(0, 92);
-  M5.Speaker.setChannelVolume(1, 140);
-}
-
-void resetMusic(MusicScene scene) {
-  currentMusicScene = scene;
-  musicNoteIndex = 0;
-  nextMusicAt = 0;
-}
-
-void updateMusic(MusicScene scene) {
-  if (!audioEnabled) {
-    return;
-  }
-  if (scene != currentMusicScene) {
-    resetMusic(scene);
-  }
-
-  uint32_t now = millis();
-  if (now < nextMusicAt) {
-    return;
-  }
-
-  int length = 0;
-  const MelodyNote* melody = melodyForScene(scene, length);
-  if (melody == nullptr || length == 0) {
-    return;
-  }
-
-  const MelodyNote& note = melody[musicNoteIndex];
-  if (note.frequency > 0) {
-    M5.Speaker.tone(note.frequency, note.duration, 0, true);
-  } else {
-    M5.Speaker.stop(0);
-  }
-  nextMusicAt = now + note.duration + note.gap;
-  musicNoteIndex = (musicNoteIndex + 1) % length;
+  M5.Speaker.setVolume(46);
+  M5.Speaker.setChannelVolume(0, 120);
+  M5.Speaker.setChannelVolume(1, 110);
 }
 
 void playBounceSound() {
@@ -224,12 +121,25 @@ void playBounceSound() {
     return;
   }
   lastBounceSoundAt = now;
-  M5.Speaker.tone(1319, 42, 1, true);
+  M5.Speaker.tone(1175, 45, 0, true);
 }
 
 void playStartSound() {
   if (audioEnabled) {
-    M5.Speaker.tone(1568, 80, 1, true);
+    M5.Speaker.tone(988, 70, 0, true);
+  }
+}
+
+void playFailureSound() {
+  if (audioEnabled) {
+    M5.Speaker.tone(392, 210, 0, true);
+  }
+}
+
+void playSuccessSound() {
+  if (audioEnabled) {
+    M5.Speaker.tone(1319, 180, 0, true);
+    M5.Speaker.tone(1760, 220, 1, true);
   }
 }
 
@@ -701,13 +611,12 @@ void updateGame() {
   if (player.y > screenH + playerH) {
     gameOver = true;
     gameOverDrawn = false;
-    resetMusic(MusicScene::GameOver);
+    playFailureSound();
   }
 
   if (score >= winScoreForDifficulty() && !winTransition && !victory) {
     winTransition = true;
     winTransitionStart = millis();
-    resetMusic(MusicScene::Ascend);
   }
 }
 
@@ -739,6 +648,7 @@ void renderWinTransition() {
     victory = true;
     victoryDrawn = false;
     victoryStart = millis();
+    playSuccessSound();
   }
 }
 
@@ -753,7 +663,6 @@ void showBootScreen() {
   bool modeNeedsRedraw = true;
   while (true) {
     M5.update();
-    updateMusic(MusicScene::Boot);
     emitTelemetry("home");
     if (modeNeedsRedraw) {
       char modeText[20];
@@ -807,7 +716,6 @@ void loop() {
   M5.update();
 
   if (winTransition) {
-    updateMusic(MusicScene::Ascend);
     renderWinTransition();
     emitTelemetry("ascend");
     delay(16);
@@ -815,7 +723,6 @@ void loop() {
   }
 
   if (victory) {
-    updateMusic(MusicScene::Victory);
     drawVictoryFrame();
     emitTelemetry("victory");
     if (M5.BtnA.wasPressed() || M5.BtnB.wasPressed()) {
@@ -827,7 +734,6 @@ void loop() {
   }
 
   if (gameOver) {
-    updateMusic(MusicScene::GameOver);
     if (!gameOverDrawn) {
       drawGameOver();
       gameOverDrawn = true;
@@ -849,7 +755,6 @@ void loop() {
   lastFrame = now;
 
   updateGame();
-  updateMusic(MusicScene::Play);
   renderGame();
   emitTelemetry("play");
 }
