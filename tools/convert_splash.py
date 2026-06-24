@@ -26,6 +26,20 @@ IMAGES = [
         "array_name": "kGameOverImage",
     },
     {
+        "input": ROOT / "assets" / "devil-jump-failure.png",
+        "output": ROOT / "src" / "failure_image.h",
+        "width_name": "kFailureWidth",
+        "height_name": "kFailureHeight",
+        "array_name": "kFailureImage",
+    },
+    {
+        "input": ROOT / "assets" / "devil-jump-score-bg.png",
+        "output": ROOT / "src" / "score_image.h",
+        "width_name": "kScoreWidth",
+        "height_name": "kScoreHeight",
+        "array_name": "kScoreImage",
+    },
+    {
         "input": ROOT / "assets" / "devil-jump-victory.png",
         "output": ROOT / "src" / "victory_image.h",
         "width_name": "kVictoryWidth",

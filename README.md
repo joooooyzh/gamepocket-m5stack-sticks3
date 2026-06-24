@@ -1,13 +1,16 @@
-# M5Stick Jump
+# M5StickS3 Mini Game Launcher / 小游戏合集
 
-一个适合 M5StickC / M5StickC Plus 的小屏幕跳跃游戏，玩法类似“涂鸦跳跃”：小恶魔会自动弹跳，玩家通过倾斜设备或 A/B 按键左右移动，尽量一直向上。
+一个烧录到同一台 M5StickS3 上的双游戏合集。开机先进入竖屏游戏选择首页，每个游戏单独显示成一张大卡片；进入后会到对应游戏自己的首页。
 
-游戏现在带有由 imagegen 设计的 `DEVIL JUMP` 小恶魔首页、Game Over 页面、通关 SUCCESS 页面和 7 张关卡背景。关卡越高，平台越窄、平台间距越大、跳跃和横向移动节奏越快，背景也会从蓝天逐渐跳到太空。
-游戏还带有轻量 8-bit 音效：开始、踩到横杆、失败和成功时会播放短提示音。StickS3 版本会在游戏中播放原创复古平台跳跃风格 BGM，更接近经典掌机游戏的欢快节奏。
+## 游戏
+
+- **Shiba Coin Dash / 柴犬金币冲刺**：横向金币闯关小游戏，倾斜设备控制圆滚滚柴犬，收集金币、躲避尖刺、到达旗帜过关。
+- **Devil Jump / 恶魔跳跃**：竖屏涂鸦跳跃风格小游戏，小恶魔自动弹跳，倾斜或按键左右移动，尽量向上挑战更高关卡。
+  新版加入 GPT Image 生成风格的新怪物、云朵/草地/蘑菇/冰晶/星空/碎裂横杠，以及可拾取的小火箭背包；碰到怪物会死亡，达到 200000 分才触发成功彩蛋页，结束后会显示本局比分详情。
 
 ## 硬件
 
-- M5StickC 或 M5StickC Plus
+- M5StickS3
 - USB 数据线
 
 ## 编译和烧录
@@ -15,7 +18,13 @@
 推荐使用 PlatformIO：
 
 ```bash
-pio run -t upload
+pio run -e m5sticks3 -t upload
+```
+
+如果只想先编译：
+
+```bash
+pio run -e m5sticks3
 ```
 
 串口监视：
@@ -24,65 +33,57 @@ pio run -t upload
 pio device monitor
 ```
 
-电脑同步画面推荐使用串口桥接：
-
-```bash
-python3 tools/serial_mirror.py --serial /dev/cu.usbserial-6952522CF5 --http 8766 --host 127.0.0.1
-```
-
-然后打开：
-
-```text
-http://127.0.0.1:8766/mirror/
-```
-
-网页镜像和 `pio device monitor` 不能同时占用同一个串口。
-
 ## 操作
 
-- 开机画面：默认困难 5 星
-- 开机画面按 A：切换难度，顺序为 EASY、STANDARD、HARD 1 星到 HARD 7 星
-- 开机画面按 B：开始游戏
+启动器首页：
+
+- B：切换游戏卡片
+- A：进入选中的游戏
+
+柴犬金币冲刺：
+
+- 柴犬首页按 A：开始，首页图中显示为 `A PLAY`
+- 柴犬首页按 B：切换关卡，首页图中显示为 `B STAGE`
+- 横屏握持时上下倾斜 StickS3：向上倾斜向左滚，向下倾斜向右滚
+- 游戏中按 A：跳跃
+- 游戏中按 B：返回游戏机首页
+- 通关后按 A 进入下一关，按 B 返回游戏机首页
+
+恶魔跳跃：
+
+- 恶魔首页按 A：直接进入简单模式
+- 恶魔首页按 B：直接进入挑战模式
 - 左右倾斜：移动角色
-- A 键：向左微调
-- B 键：向右微调
-- 游戏结束后按 A 或 B 回到首页，再按 B 开始
-- 通关后小恶魔会先长出翅膀飞到顶部，再显示变天使的 SUCCESS 页面和撒花动画；按 A 或 B 回到首页
-
-## 关卡
-
-- L1：入门，平台宽，间距小
-- L2：高云层，平台逐渐变窄
-- L3：夕阳高度，开始更考验落点
-- L4：暮色天空，间距继续变大
-- L5：平流层，节奏更快
-- L6：星层，平台更窄
-- L7：太空，速度最快。通关分数会随难度变化，默认困难 5 星约 2450 分通关
-
-## 难度
-
-- EASY：平台更宽、间距更小、重力更轻，适合练习
-- STANDARD：标准节奏，平台和跳跃节奏适中
-- HARD：1 到 7 星，星星越多平台越窄、间距越大、重力和速度越强、通关高度越高
+- 简单模式只有基础跳跃；挑战模式会出现火箭、怪物和会断掉的横杠
+- 挑战模式中，3000 分后怪物会按分数随机出现，分数越高越难；按 A 连续射击可以打掉怪物，跳跃碰到没打掉的怪物会失败
+- 挑战模式中，火箭会在 5000、20000、50000 分附近随机出现，拾取后会向上飞并推进 5000-10000 随机分数
+- 挑战模式中，裂纹横杠踩上后会突然碎掉，只能借力一次
+- 关卡长度已加长，分数达到 200000 才触发成功彩蛋页
+- 死亡后会先进入短暂受击状态，再进入 SCORE 分数页，显示本局分数、最好成绩对比、火箭数、击杀数、碎裂横杠数、最高关卡和高度
+- 游戏中按 B：返回游戏机首页
+- 游戏结束或通关后按 A 回到恶魔首页，按 B 返回游戏机首页
 
 ## 文件
 
-- `platformio.ini`：PlatformIO 工程配置
-- `src/main.cpp`：游戏主程序
-- `src/splash_image.h`：首页图的 RGB565 固件数据
-- `src/gameover_image.h`：Game Over 图的 RGB565 固件数据
-- `src/victory_image.h`：通关 SUCCESS 图的 RGB565 固件数据
-- `src/level_backgrounds.h`：7 张关卡背景的 RGB565 固件数据
-- `src/player_sprite.h`：游戏中跳跃小恶魔的 RGB565 透明 sprite 数据
-- `mirror/index.html`：电脑端同步显示页面
-- `mirror/app.js`：通过 Web Serial 接收 M5Stick 游戏状态并重绘画面
-- `mirror/styles.css`：电脑端同步显示页面样式
-- `assets/devil-jump-home.png`：由 imagegen 生成的 `DEVIL JUMP` 首页设计源图
-- `assets/devil-jump-gameover.png`：由 imagegen 生成的小恶魔哭泣 Game Over 设计源图
-- `assets/devil-jump-victory.png`：由 imagegen 生成的小恶魔变天使通关设计源图
-- `assets/player-devil.png`：由 imagegen 生成的跳跃小恶魔 sprite 源图
-- `assets/player-devil-clean.png`：电脑镜像页面使用的透明抠图小恶魔 sprite
-- `assets/level-*.png`：由 imagegen 生成的 7 张关卡背景源图
-- `assets/little-devil-splash.png`：早期小恶魔设计源图
-- `tools/convert_splash.py`：把图片转换为 M5Stick 可用头文件的脚本
-- `tools/serial_mirror.py`：电脑端串口桥接服务
+- `src/main.cpp`：竖屏 GamePocket 首页和游戏选择卡片
+- `src/shiba_game.cpp` / `src/shiba_game.h`：柴犬金币冲刺模块
+- `src/devil_game.cpp` / `src/devil_game.h`：恶魔跳跃模块
+- `src/launcher_card_images.h`：GPT Image 两张竖屏游戏卡片转换出的 135x240 固件图片数据
+- `src/gamepocket_home_image.h`、`assets/gamepocket-home-v4.png`：GPT Image 生成的 GamePocket 竖屏首页，开机后按 A 进入游戏选择页
+- `assets/launcher-card-shiba.png`：GPT Image 生成的柴犬游戏选择卡片源图
+- `assets/launcher-card-devil.png`：GPT Image 生成的恶魔跳跃选择卡片源图
+- `assets/devil-monster-bullet-style-guide.png`：GPT Image 生成的恶魔跳跃怪物和子弹风格参考图
+- `assets/devil-jump-powerup-platform-spritesheet.png`：GPT Image 生成的新怪物、平台形态和小火箭素材参考图
+- `assets/devil-jump-results-crumble-style-guide.png`：GPT Image 生成的碎裂横杠和比分详情结算卡参考图
+- `assets/devil-jump-score-page-design.png`：GPT Image 生成的 SCORE 分数页视觉设计参考图
+- `assets/devil-jump-score-bg.png`：GPT Image 生成的简化 SCORE 分数页固件背景图
+- `assets/devil-jump-death-animation-design.png`：GPT Image 生成的死亡过渡动效关键帧参考图
+- `assets/devil-jump-failure.png`：GPT Image 生成的恶魔跳跃失败状态固件背景图
+- `src/launcher_home_image.h`、`assets/game-select-home.png`：旧横屏启动器素材，当前入口不再使用
+- `src/home_image.h`、`src/game_background_image.h`、`src/level_clear_images.h`、`src/shiba_sprite.h`、`src/crying_shiba_sprite.h`：柴犬游戏素材头文件
+- `assets/text-hud-style-guide.png`：GPT Image 生成的柴犬 HUD 和失败提示文字风格参考图
+- `src/splash_image.h`、`src/gameover_image.h`、`src/victory_image.h`、`src/level_backgrounds.h`、`src/player_sprite.h`：恶魔跳跃素材头文件
+- `tools/convert_home_image.py`：把启动器、柴犬首页、柴犬背景和通关图转换为固件头文件
+- `tools/convert_shiba_sprite.py`：把柴犬 sprite 源图转换为固件头文件
+- `tools/convert_splash.py`：恶魔跳跃图片转换脚本
+- `tools/serial_mirror.py`：电脑端串口桥接服务，保留用于调试遥测

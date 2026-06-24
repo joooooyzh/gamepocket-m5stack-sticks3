@@ -16,6 +16,7 @@ const stateNames = {
   play: "游戏中",
   ascend: "飞升",
   gameover: "Game Over",
+  dying: "受击",
   victory: "Success",
   waiting: "等待串口",
   connected: "桥接已连接",
@@ -43,6 +44,8 @@ async function loadAssets() {
   const tasks = [
     loadImage("home", "../assets/devil-jump-home.png"),
     loadImage("gameover", "../assets/devil-jump-gameover.png"),
+    loadImage("failure", "../assets/devil-jump-failure.png"),
+    loadImage("score", "../assets/devil-jump-score-bg.png"),
     loadImage("victory", "../assets/devil-jump-victory.png"),
     loadImage("player", "../assets/player-devil-clean.png?v=3"),
   ];
@@ -98,8 +101,7 @@ function platformColor(level) {
 
 function difficultyLabel(data) {
   if (data.mode === "EASY") return "EASY";
-  if (data.mode === "STANDARD") return "STANDARD";
-  if (data.mode === "HARD") return `HARD ${"★".repeat(data.stars || 1)}`;
+  if (data.mode === "CHALLENGE") return "CHALLENGE";
   return "";
 }
 
@@ -128,15 +130,236 @@ function drawHud(data) {
 }
 
 function drawPlatforms(data) {
-  const color = platformColor(data.level);
   for (const p of data.platforms || []) {
-    const [x, y, w] = p;
+    const [x, y, w, type = 0, crumbling = 0, crumbleTicks = 0] = p;
+    const color = platformColor(data.level);
+
+    if (crumbling) {
+      const fall = crumbleTicks * 2;
+      const half = Math.max(5, Math.floor(w / 2) - 3);
+      ctx.fillStyle = "#061018";
+      roundRect(x - 1, y + fall - 1, half + 1, 8, 2, true);
+      ctx.fillStyle = "#c47c4d";
+      roundRect(x, y + fall, half, 6, 2, true);
+      ctx.fillStyle = "#061018";
+      roundRect(x + half + 5, y + fall + 2, w - half - 5, 8, 2, true);
+      ctx.fillStyle = "#78624d";
+      roundRect(x + half + 6, y + fall + 3, w - half - 7, 6, 2, true);
+      ctx.fillStyle = "#ff9d35";
+      ctx.fillRect(x + half + 2, y + fall + 6, 2, 2);
+      ctx.fillRect(x + w - 5, y + fall + 10, 2, 2);
+      continue;
+    }
+
     ctx.fillStyle = "#061018";
-    roundRect(x - 1, y - 1, w + 2, 6, 2, true);
-    ctx.fillStyle = color;
-    roundRect(x, y, w, 4, 2, true);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x, y, w, 1);
+    roundRect(x - 1, y - 2, w + 2, 8, 3, true);
+
+    if (type === 0) {
+      ctx.fillStyle = "#ffffff";
+      for (let i = 0; i < w; i += 10) {
+        ctx.beginPath();
+        ctx.arc(x + i + 5, y + 1, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#8edcff";
+      roundRect(x, y + 1, w, 5, 3, true);
+    } else if (type === 1) {
+      ctx.fillStyle = "#9b6a24";
+      roundRect(x, y, w, 7, 2, true);
+      ctx.fillStyle = "#8cff57";
+      roundRect(x, y - 1, w, 4, 2, true);
+      for (let i = 3; i < w; i += 8) ctx.fillRect(x + i, y - 4, 1, 4);
+    } else if (type === 2) {
+      ctx.fillStyle = "#e63b25";
+      roundRect(x, y + 1, w, 6, 3, true);
+      ctx.fillStyle = "#ff9d35";
+      roundRect(x + 2, y - 2, Math.max(1, w - 4), 5, 5, true);
+      ctx.fillStyle = "#ffe761";
+      ctx.fillRect(x + 5, y - 1, Math.max(1, w - 10), 1);
+    } else if (type === 3) {
+      ctx.fillStyle = "#42a3ff";
+      roundRect(x, y, w, 6, 2, true);
+      ctx.fillStyle = "#c5ffff";
+      for (let i = 0; i < w; i += 7) {
+        ctx.beginPath();
+        ctx.moveTo(x + i, y + 6);
+        ctx.lineTo(x + i + 4, y - 2);
+        ctx.lineTo(x + i + 8, y + 6);
+        ctx.fill();
+      }
+    } else if (type === 5) {
+      ctx.fillStyle = "#78624d";
+      roundRect(x, y, w, 7, 2, true);
+      ctx.fillStyle = "#d79a61";
+      roundRect(x, y - 1, w, 5, 2, true);
+      ctx.strokeStyle = "#ff4141";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2 - 7, y - 1);
+      ctx.lineTo(x + w / 2 - 3, y + 2);
+      ctx.lineTo(x + w / 2 + 1, y);
+      ctx.lineTo(x + w / 2 + 6, y + 3);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#3b1235";
+      roundRect(x, y, w, 6, 2, true);
+      ctx.fillStyle = "#ffe761";
+      roundRect(x, y - 1, w, 4, 2, true);
+      ctx.fillStyle = "#ffffff";
+      for (let i = 4; i < w; i += 15) ctx.fillRect(x + i, y, 1, 1);
+    }
+  }
+}
+
+function drawMiniStar(x, y, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 5);
+  ctx.lineTo(x + 2, y - 1);
+  ctx.lineTo(x + 5, y);
+  ctx.lineTo(x + 2, y + 1);
+  ctx.lineTo(x, y + 5);
+  ctx.lineTo(x - 2, y + 1);
+  ctx.lineTo(x - 5, y);
+  ctx.lineTo(x - 2, y - 1);
+  ctx.fill();
+}
+
+function drawResultIcon(x, y, type, color) {
+  ctx.fillStyle = color;
+  if (type === 0) drawRocket(x - 4, y - 9, false);
+  else if (type === 1) drawMonster(x - 8, y - 8, 1);
+  else if (type === 2) {
+    roundRect(x - 8, y - 4, 8, 7, 1, true);
+    ctx.fillStyle = "#78624d";
+    roundRect(x + 2, y - 5, 8, 8, 1, true);
+  } else if (type === 3) {
+    ctx.fillRect(x - 5, y - 7, 2, 14);
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 7);
+    ctx.lineTo(x + 8, y - 4);
+    ctx.lineTo(x - 3, y);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x, y - 9);
+    ctx.lineTo(x - 8, y + 7);
+    ctx.lineTo(x + 8, y + 7);
+    ctx.fill();
+  }
+}
+
+function drawStatTile(x, y, label, value, type, color) {
+  ctx.fillStyle = "#10222d";
+  roundRect(x, y, 54, 33, 4, true);
+  ctx.strokeStyle = "#3a394c";
+  roundRect(x, y, 54, 33, 4, false);
+  drawResultIcon(x + 13, y + 16, type, color);
+  ctx.font = "bold 7px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#c8f5ff";
+  ctx.fillText(label, x + 25, y + 12);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(String(value ?? 0), x + 52, y + 27);
+}
+
+function drawResultPanel(data, title) {
+  const previousBest = data.prevBest ?? data.best ?? 0;
+  const score = data.score ?? 0;
+  const newBest = score > previousBest;
+  const delta = score - previousBest;
+
+  drawCover(images.score);
+  ctx.textAlign = "center";
+  ctx.font = "bold 30px system-ui, sans-serif";
+  ctx.fillStyle = "#000000";
+  ctx.fillText(String(score), logical.w / 2 + 2, 130);
+  ctx.fillStyle = "#ffe761";
+  ctx.fillText(String(score), logical.w / 2, 128);
+
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.fillStyle = newBest ? "#ffe761" : "#c8f5ff";
+  ctx.fillText(newBest ? `NEW +${delta}` : `BEST ${data.best ?? previousBest}`, logical.w / 2, 186);
+}
+
+function drawMonster(x, y, type = 0) {
+  const body = ["#7b1bb8", "#13d17a", "#f04a3a"][type] || "#7b1bb8";
+  const belly = ["#d44aff", "#77f0a4", "#ff9d35"][type] || "#d44aff";
+  ctx.fillStyle = "#061018";
+  roundRect(x, y + 1, 16, 13, 5, true);
+  ctx.fillStyle = body;
+  roundRect(x + 1, y, 14, 12, 5, true);
+  ctx.fillStyle = "#ffe761";
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y + 1);
+  ctx.lineTo(x + 4, y - 5);
+  ctx.lineTo(x + 7, y + 1);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 15, y + 1);
+  ctx.lineTo(x + 12, y - 5);
+  ctx.lineTo(x + 9, y + 1);
+  ctx.fill();
+  ctx.fillStyle = belly;
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 8, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(x + 5, y + 4, 2, 2);
+  ctx.fillRect(x + 10, y + 4, 2, 2);
+  ctx.fillStyle = "#061018";
+  ctx.fillRect(x + 6, y + 10, 5, 1);
+}
+
+function drawRocket(x, y, flameOn = false) {
+  ctx.fillStyle = "#ffe761";
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y - 3);
+  ctx.lineTo(x + 1, y + 3);
+  ctx.lineTo(x + 7, y + 3);
+  ctx.fill();
+  ctx.fillStyle = "#f04a3a";
+  roundRect(x + 1, y + 2, 7, 14, 3, true);
+  ctx.fillStyle = "#ff9d35";
+  roundRect(x + 3, y + 4, 3, 8, 1, true);
+  ctx.fillStyle = "#9fb8c8";
+  ctx.fillRect(x, y + 10, 2, 5);
+  ctx.fillRect(x + 7, y + 10, 2, 5);
+  if (flameOn) {
+    ctx.fillStyle = "#39d6ff";
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 15);
+    ctx.lineTo(x + 7, y + 15);
+    ctx.lineTo(x + 4, y + 24);
+    ctx.fill();
+    ctx.fillStyle = "#ffe761";
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + 15);
+    ctx.lineTo(x + 6, y + 15);
+    ctx.lineTo(x + 4, y + 21);
+    ctx.fill();
+  }
+}
+
+function drawHazards(data) {
+  for (const monster of data.monsters || []) {
+    drawMonster(monster[0], monster[1], monster[2] || 0);
+  }
+
+  for (const rocket of data.rockets || []) {
+    drawRocket(rocket[0], rocket[1], false);
+  }
+
+  const bullets = data.bullets || (data.bullet ? [data.bullet] : []);
+  for (const bullet of bullets) {
+    const [x, y] = bullet;
+    ctx.fillStyle = "#ffe761";
+    roundRect(x, y, 3, 7, 1, true);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x + 1, y - 1, 1, 1);
+    ctx.fillStyle = "#ff9d35";
+    ctx.fillRect(x + 1, y + 7, 1, 1);
   }
 }
 
@@ -148,10 +371,14 @@ function roundRect(x, y, w, h, r, fill) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   if (fill) ctx.fill();
+  else ctx.stroke();
 }
 
 function drawPlayer(data) {
   const [x, y] = data.player || [0, 0];
+  if (data.rocket) {
+    drawRocket(x + 11, y + 16, true);
+  }
   if (images.player) {
     ctx.drawImage(images.player, x, y, 30, 34);
     return;
@@ -213,17 +440,35 @@ function render(data) {
 
   if (data.state === "home") {
     drawCover(images.home);
-    drawBottomText(`${difficultyLabel(data) || "HARD ★★★★★"}  A MODE  B START`);
   } else if (data.state === "gameover") {
-    drawCover(images.gameover);
-    drawBottomText("A/B HOME");
+    ctx.fillStyle = "#10222d";
+    ctx.fillRect(0, 0, logical.w, logical.h);
+    drawResultPanel(data, "SCORE");
+  } else if (data.state === "dying") {
+    drawCover(images.failure || images[`level${data.level || 1}`]);
+    const phase = confettiTick % 48;
+    ctx.strokeStyle = phase < 24 ? "#ff4141" : "#ffe761";
+    ctx.lineWidth = 2;
+    ctx.fillStyle = "#1c2429";
+    roundRect(18, logical.h - 48, logical.w - 36, 30, 6, true);
+    ctx.strokeStyle = phase < 24 ? "#ff4141" : "#ffe761";
+    roundRect(18, logical.h - 48, logical.w - 36, 30, 6, false);
+    ctx.font = "bold 7px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(phase < 37 ? "OUCH" : "SCORE NEXT", logical.w / 2, logical.h - 36);
+    ctx.fillStyle = "#05081d";
+    roundRect(22, logical.h - 27, logical.w - 44, 3, 1, true);
+    ctx.fillStyle = "#ffe761";
+    roundRect(22, logical.h - 27, Math.min(logical.w - 44, ((phase + 1) / 48) * (logical.w - 44)), 3, 1, true);
   } else if (data.state === "victory") {
     drawCover(images.victory);
     drawConfetti();
-    drawBottomText("SUCCESS");
+    drawResultPanel(data, "SUCCESS");
   } else if (data.state === "ascend") {
     drawCover(images[`level${data.level || 1}`]);
     drawPlatforms(data);
+    drawHazards(data);
     drawAngelPlayer(data);
     drawHud(data);
     drawBottomText("ASCENDING");
@@ -233,6 +478,7 @@ function render(data) {
   } else {
     drawCover(images[`level${data.level || 1}`]);
     drawPlatforms(data);
+    drawHazards(data);
     drawPlayer(data);
     drawHud(data);
   }
@@ -339,7 +585,7 @@ connectButton.addEventListener("click", () => {
 
 function animate() {
   confettiTick += 1;
-  if (latest?.state === "victory") {
+  if (latest?.state === "victory" || latest?.state === "dying") {
     render(latest);
   }
   requestAnimationFrame(animate);
